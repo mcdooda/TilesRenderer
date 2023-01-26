@@ -26,7 +26,7 @@ void main()
 {
 	vec4 tilePosition = in_tilePositions[gl_BaseInstance];
 	mat4 mvp = projection * view;
-	gl_Position = mvp * vec4(in_Vertex, 1.0);
+	gl_Position = mvp * vec4(in_Vertex + tilePosition.xyz, 1.0);
 	out_Color = color;
 	out_Normal = in_Normal;
 }

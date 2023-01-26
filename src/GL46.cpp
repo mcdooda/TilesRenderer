@@ -107,6 +107,32 @@ int main(int argc, char* argv[])
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	TileMesh tileMesh;
+	constexpr int mapHalfSize = 200;
+	for (int x = -mapHalfSize; x <= mapHalfSize; ++x)
+	{
+		const float fx = static_cast<float>(x);
+		for (int y = -mapHalfSize; y <= mapHalfSize; ++y)
+		{
+			const float fy = static_cast<float>(y);
+			tileMesh.addTile(glm::vec3(x, y, std::cos(x * 0.3f + y * 0.1f)));
+		}
+	}
+	tileMesh.upload();
+
+	const float tileSize = 32.f;
+	const glm::vec3 axes[] = {
+		glm::vec3(-tileSize, -0.5f * tileSize, 0.f /*-1.f * t*/),
+		glm::vec3(tileSize, -0.5f * tileSize, 0.f /*-1.f * t*/),
+		glm::vec3(0.f, tileSize, 0.f)
+	};
+	glm::mat4 view = glm::mat4(
+		glm::vec4(axes[0], 0.f),
+		glm::vec4(axes[1], 0.f),
+		glm::vec4(axes[2], 0.f),
+		glm::vec4(glm::vec3(0.f, 0.f, 0.f), 1.f)
+	);
+
+	float dt = 0.01f;
 
 	GLProgram program;
 	program.load("shaders/tile.frag", "shaders/tile.vert");
@@ -115,6 +141,8 @@ int main(int argc, char* argv[])
     bool loop = true;
     while (loop)
     {
+		const float t1 = static_cast<float>(SDL_GetTicks()) * 0.001f;
+
         while (SDL_PollEvent(&event))
         {
             switch (event.type)
@@ -130,36 +158,78 @@ int main(int argc, char* argv[])
 					break;
 				}
 				break;
+			case SDL_MOUSEWHEEL:
+			{
+				const float wheelY = static_cast<float>(event.wheel.y);
+				const float zoom = 1.f + wheelY * 0.1f;
+				view = glm::scale(view, glm::vec3(zoom, zoom, zoom));
+			}
+				break;
 			case SDL_WINDOWEVENT:
 				switch (event.window.event)
 				{
 				case SDL_WINDOWEVENT_SIZE_CHANGED:
 					windowWidth = event.window.data1;
-					windowWidth = event.window.data2;
+					windowHeight = event.window.data2;
 					break;
 				}
-            }
-        }
+			}
+		}
 
-		const float currentTime = static_cast<float>(SDL_GetTicks()) * 0.001f;
+		if (const Uint8* keyboardState = SDL_GetKeyboardState(nullptr))
+		{
+			const bool up = keyboardState[SDL_SCANCODE_UP];
+			const bool down = keyboardState[SDL_SCANCODE_DOWN];
+			const bool left = keyboardState[SDL_SCANCODE_LEFT];
+			const bool right = keyboardState[SDL_SCANCODE_RIGHT];
+			glm::vec3 move(0.f);
+			if (!(up && down))
+			{
+				if (up)
+				{
+					move.y = -1.f;
+				}
+				else if (down)
+				{
+					move.y = 1.f;
+				}
+			}
+			if (!(left && right))
+			{
+				if (left)
+				{
+					move.x = 1.f;
+				}
+				else if (right)
+				{
+					move.x = -1.f;
+				}
+			}
+			view = glm::translate(view, move * dt * 100.f);
+
+			const bool rotateLeft = keyboardState[SDL_SCANCODE_J];
+			const bool rotateRight = keyboardState[SDL_SCANCODE_K];
+			float rotation = 0.f;
+			if (!(rotateLeft && rotateRight))
+			{
+				if (rotateLeft)
+				{
+					rotation = -1.f;
+				}
+				else if (rotateRight)
+				{
+					rotation = 1.f;
+				}
+			}
+			view = glm::rotate(view, rotation * dt, glm::vec3(0.f, 0.f, 1.f));
+		}
 
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glViewport(0, 0, windowWidth, windowHeight);
 
 		PerFrameData perFrameData;
-		const float t = 100.f;
-		const glm::vec3 axes[] = {
-			glm::vec3(-t, -0.5f * t, 0.f /*-1.f * t*/),
-			glm::vec3(t, -0.5f * t, 0.f /*-1.f * t*/),
-			glm::vec3(0.f, t, 0.f)
-		};
-		perFrameData.view = glm::mat4(
-			glm::vec4(axes[0], 0.f),
-			glm::vec4(axes[1], 0.f),
-			glm::vec4(axes[2], 0.f),
-			glm::vec4(glm::vec3(0.f, 0.f, 0.f), 1.f)
-		);
+		perFrameData.view = view;
 		perFrameData.projection = glm::ortho(
 			static_cast<float>(windowWidth) * -0.5f, static_cast<float>(windowWidth) * 0.5f,
 			static_cast<float>(windowHeight) * -0.5f, static_cast<float>(windowHeight) * 0.5f
@@ -168,29 +238,11 @@ int main(int argc, char* argv[])
 		perFrameData.color = glm::vec4(1.f, 1.f, 0.f, 1.f);
 
 		const glm::vec3 initialLightDirection = glm::normalize(glm::vec3(-1.f, -1.f, -1.f));
-		const glm::vec3 lightDirection = glm::rotateZ(initialLightDirection, currentTime);
+		const glm::vec3 lightDirection = glm::rotateZ(initialLightDirection, t1);
 		//const glm::vec3 lightDirection = initialLightDirection;
 
 		perFrameData.lightDirection = glm::vec4(lightDirection, 1.f);
 		tileMesh.setPerFrameData(perFrameData);
-
-		GLIndirectCommandsBuffer<1024>& commandsBuffer = tileMesh.getIndirectCommandsBuffer();
-		commandsBuffer.clearCommands();
-		commandsBuffer.addCommand(
-			sizeof(tileIndices) / sizeof(GLuint), // number of vertices
-			1, // number of instances to draw
-			0, // index offset
-			0, // vertex offset
-			0 // base instance
-		);
-		commandsBuffer.addCommand(
-			sizeof(tileIndices) / sizeof(GLuint), // number of vertices
-			1, // number of instances to draw
-			0, // index offset
-			0, // vertex offset
-			1 // base instance
-		);
-		commandsBuffer.upload();
 
 		program.use();
 
@@ -199,6 +251,14 @@ int main(int argc, char* argv[])
 		glUseProgram(0);
 
         SDL_GL_SwapWindow(window);
+
+		const float t2 = static_cast<float>(SDL_GetTicks()) * 0.001f;
+		dt = t2 - t1;
+		const float fps = 1.f / dt;
+
+		char title[20];
+		sprintf(title, "%.1f", fps);
+		SDL_SetWindowTitle(window, title);
     }
 
 	SDL_DestroyWindow(window);

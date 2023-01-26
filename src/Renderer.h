@@ -58,8 +58,9 @@ const glm::vec3 tileVertices[] = {
 
 class TileMesh
 {
-	static constexpr int MaxTiles = 1024;
 public:
+	static constexpr int MaxTiles = 1024 * 1024;
+
 	TileMesh()
 		: m_indicesBuffer(tileIndices, sizeof(tileIndices))
 		, m_verticesBuffer(tileVertices, sizeof(tileVertices))
@@ -87,15 +88,33 @@ public:
 		m_perFrameDataBuffer.update(perFrameData);
 	}
 
+	void addTile(const glm::vec3& tilePosition)
+	{
+		const GLuint baseInstance = static_cast<GLuint>(m_tilesBuffer.getObjectCount());
+		m_tilesBuffer.addObject(glm::vec4(tilePosition, 0.f));
+		m_indirectCommandsBuffer.addCommand(
+			sizeof(tileIndices) / sizeof(GLuint), // number of vertices
+			1, // number of instances to draw
+			0, // index offset
+			0, // vertex offset
+			baseInstance
+		);
+	}
+
+	void upload()
+	{
+		std::cout << "Uploading " << m_tilesBuffer.getObjectCount() << " tiles" << std::endl;
+		m_tilesBuffer.upload();
+		m_indirectCommandsBuffer.upload();
+	}
+
 	void draw()
 	{
 		glBindVertexArray(m_vao);
 		m_perFrameDataBuffer.bind(GL_UNIFORM_BUFFER, PerFrameBufferIndex);
+		m_tilesBuffer.bind(GL_SHADER_STORAGE_BUFFER, TilesBufferIndex);
 		m_indirectCommandsBuffer.draw();
 	}
-
-	GLIndirectCommandsBuffer<MaxTiles>& getIndirectCommandsBuffer() { return m_indirectCommandsBuffer; }
-	GLArrayBuffer<glm::vec4, MaxTiles>& getTilesBuffer() { return m_tilesBuffer; }
 
 protected:
 	static constexpr GLuint PerFrameBufferIndex = 0;
