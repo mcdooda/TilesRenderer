@@ -8,6 +8,7 @@ layout(std140, binding = 0) uniform PerFrameData
 	mat4 view;
 	mat4 projection;
 	vec4 color;
+	vec4 lightDirection;
 };
 
 layout(std430, binding = 1) restrict readonly buffer Tiles

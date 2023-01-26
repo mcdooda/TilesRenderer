@@ -3,6 +3,7 @@
 #include <cassert>
 #include <vector>
 #include <GL/glew.h>
+#define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 
 #include "Buffer.h"
@@ -12,6 +13,7 @@ struct PerFrameData
 	glm::mat4 view;
 	glm::mat4 projection;
 	glm::vec4 color;
+	glm::vec4 lightDirection;
 };
 
 /*
@@ -36,22 +38,22 @@ const GLuint tileIndices[] = {
 
 const glm::vec3 tileVertices[] = {
 	// tile top with upwards normals
-	glm::vec3(-0.5f, -0.5f, 0.f),  //glm::vec3(0.f, 0.f, 1.f),
-	glm::vec3(0.5f,  -0.5f, 0.f),  //glm::vec3(0.f, 0.f, 1.f),
-	glm::vec3(-0.5f,  0.5f, 0.f),  //glm::vec3(0.f, 0.f, 1.f),
-	glm::vec3(0.5f,   0.5f, 0.f),  //glm::vec3(0.f, 0.f, 1.f),
+	glm::vec3(-0.5f, -0.5f, 0.f),  glm::vec3(0.f, 0.f, 1.f),
+	glm::vec3(0.5f,  -0.5f, 0.f),  glm::vec3(0.f, 0.f, 1.f),
+	glm::vec3(-0.5f,  0.5f, 0.f),  glm::vec3(0.f, 0.f, 1.f),
+	glm::vec3(0.5f,   0.5f, 0.f),  glm::vec3(0.f, 0.f, 1.f),
 
 	// tile left side with sideways normals
-	glm::vec3(0.5f,  -0.5f,  0.f), //glm::vec3(1.f, 0.f, 0.f),
-	glm::vec3(0.5f,   0.5f,  0.f), //glm::vec3(1.f, 0.f, 0.f),
-	glm::vec3(0.5f,  -0.5f, -1.f), //glm::vec3(1.f, 0.f, 0.f),
-	glm::vec3(0.5f,   0.5f, -1.f), //glm::vec3(1.f, 0.f, 0.f),
+	glm::vec3(0.5f,  -0.5f,  0.f), glm::vec3(1.f, 0.f, 0.f),
+	glm::vec3(0.5f,   0.5f,  0.f), glm::vec3(1.f, 0.f, 0.f),
+	glm::vec3(0.5f,  -0.5f, -1.f), glm::vec3(1.f, 0.f, 0.f),
+	glm::vec3(0.5f,   0.5f, -1.f), glm::vec3(1.f, 0.f, 0.f),
 
 	// tile right side with sideways normals
-	glm::vec3(-0.5f,  0.5f,  0.f), //glm::vec3(0.f, 1.f, 0.f),
-	glm::vec3(0.5f,   0.5f,  0.f), //glm::vec3(0.f, 1.f, 0.f),
-	glm::vec3(-0.5f,  0.5f, -1.f), //glm::vec3(0.f, 1.f, 0.f),
-	glm::vec3(0.5f,   0.5f, -1.f), //glm::vec3(0.f, 1.f, 0.f),
+	glm::vec3(-0.5f,  0.5f,  0.f), glm::vec3(0.f, 1.f, 0.f),
+	glm::vec3(0.5f,   0.5f,  0.f), glm::vec3(0.f, 1.f, 0.f),
+	glm::vec3(-0.5f,  0.5f, -1.f), glm::vec3(0.f, 1.f, 0.f),
+	glm::vec3(0.5f,   0.5f, -1.f), glm::vec3(0.f, 1.f, 0.f),
 };
 
 class TileMesh
@@ -64,17 +66,15 @@ public:
 	{
 		glCreateVertexArrays(1, &m_vao);
 		glVertexArrayElementBuffer(m_vao, m_indicesBuffer.getHandle());
-		glVertexArrayVertexBuffer(m_vao, 0, m_verticesBuffer.getHandle(), 0, sizeof(glm::vec3));
+		glVertexArrayVertexBuffer(m_vao, 0, m_verticesBuffer.getHandle(), 0, sizeof(glm::vec3) + sizeof(glm::vec3));
 		// position
 		glEnableVertexArrayAttrib(m_vao, 0);
 		glVertexArrayAttribFormat(m_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
 		glVertexArrayAttribBinding(m_vao, 0, 0);
 		// normal
-		/*
-		glEnableVertexArrayAttrib(m_vao, 0);
-		glVertexArrayAttribFormat(m_vao, 0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3));
+		glEnableVertexArrayAttrib(m_vao, 1);
+		glVertexArrayAttribFormat(m_vao, 1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3));
 		glVertexArrayAttribBinding(m_vao, 1, 0);
-		*/
 	}
 
 	~TileMesh()

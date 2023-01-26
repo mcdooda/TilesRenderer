@@ -3,7 +3,9 @@
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
 
+#define GLM_FORCE_RADIANS
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 
 #include "Program.h"
 #include "Renderer.h"
@@ -139,15 +141,18 @@ int main(int argc, char* argv[])
             }
         }
 
+		const float currentTime = static_cast<float>(SDL_GetTicks()) * 0.001f;
+
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glViewport(0, 0, windowWidth, windowHeight);
 
 		PerFrameData perFrameData;
+		const float t = 100.f;
 		const glm::vec3 axes[] = {
-			glm::vec3(-10.f, -5.f, 0.f /*-10.f*/),
-			glm::vec3(10.f, -5.f, 0.f /*-10.f*/),
-			glm::vec3(0.f, 10.f, 0.f)
+			glm::vec3(-t, -0.5f * t, 0.f /*-1.f * t*/),
+			glm::vec3(t, -0.5f * t, 0.f /*-1.f * t*/),
+			glm::vec3(0.f, t, 0.f)
 		};
 		perFrameData.view = glm::mat4(
 			glm::vec4(axes[0], 0.f),
@@ -161,6 +166,12 @@ int main(int argc, char* argv[])
 		);
 
 		perFrameData.color = glm::vec4(1.f, 1.f, 0.f, 1.f);
+
+		const glm::vec3 initialLightDirection = glm::normalize(glm::vec3(-1.f, -1.f, -1.f));
+		const glm::vec3 lightDirection = glm::rotateZ(initialLightDirection, currentTime);
+		//const glm::vec3 lightDirection = initialLightDirection;
+
+		perFrameData.lightDirection = glm::vec4(lightDirection, 1.f);
 		tileMesh.setPerFrameData(perFrameData);
 
 		GLIndirectCommandsBuffer<1024>& commandsBuffer = tileMesh.getIndirectCommandsBuffer();
