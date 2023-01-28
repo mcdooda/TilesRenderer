@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
 		for (int y = -mapHalfSize; y <= mapHalfSize; ++y)
 		{
 			const float fy = static_cast<float>(y);
-			tileMesh.addTile(glm::vec3(x, y, std::cos(x * 0.3f + y * 0.1f)));
+			tileMesh.addTile(glm::vec3(x, y, std::cos(std::sqrt(x * x + y * y) * 0.5f)));
 		}
 	}
 	tileMesh.upload();
@@ -235,7 +235,8 @@ int main(int argc, char* argv[])
 			static_cast<float>(windowHeight) * -0.5f, static_cast<float>(windowHeight) * 0.5f
 		);
 
-		perFrameData.color = glm::vec4(1.f, 1.f, 0.f, 1.f);
+		perFrameData.grassColor = glm::vec4(0.53f, 0.8f, 0.31f, 1.f);
+		perFrameData.dirtColor = glm::vec4(0.51f, 0.43f, 0.3f, 1.f);
 
 		const glm::vec3 initialLightDirection = glm::normalize(glm::vec3(-1.f, -1.f, -1.f));
 		const glm::vec3 lightDirection = glm::rotateZ(initialLightDirection, t1);
