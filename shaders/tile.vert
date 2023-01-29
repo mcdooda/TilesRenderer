@@ -12,20 +12,46 @@ layout(std140, binding = 0) uniform PerFrameData
 	vec4 lightDirection;
 };
 
+struct TileData
+{
+	vec4 position;
+	uint tileTemplateIndex;
+	uint tileVariantIndex;
+};
+
 layout(std430, binding = 1) restrict readonly buffer Tiles
 {
-	vec4 in_tilePositions[];
+	TileData in_tiles[];
+};
+
+struct TileTemplateData
+{
+	uint64_t albedoTexture;
+	int numVariants;
+	int numAnimationFrames;
+};
+
+layout(std430, binding = 2) restrict readonly buffer TileTemplates
+{
+	TileTemplateData in_tileTemplates[];
 };
 
 layout (location = 0) in vec3 in_Vertex;
 layout (location = 1) in vec3 in_Normal;
+layout (location = 2) in vec2 in_Uv;
 
 layout (location = 0) out vec3 out_Normal;
+layout (location = 1) out vec2 out_Uv;
+layout (location = 2) out flat int out_BaseInstance;
 
 void main()
 {
-	vec4 tilePosition = in_tilePositions[gl_BaseInstance];
+	TileData tileData = in_tiles[gl_BaseInstance];
+	TileTemplateData tileTemplateData = in_tileTemplates[tileData.tileTemplateIndex];
+	
 	mat4 mvp = projection * view;
-	gl_Position = mvp * vec4(in_Vertex + tilePosition.xyz, 1.0);
+	gl_Position = mvp * vec4(in_Vertex + tileData.position.xyz, 1.0);
 	out_Normal = in_Normal;
+	out_Uv = vec2(in_Uv.x / tileTemplateData.numAnimationFrames, in_Uv.y / tileTemplateData.numVariants);
+	out_BaseInstance = gl_BaseInstance;
 }

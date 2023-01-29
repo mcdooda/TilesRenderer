@@ -10,11 +10,12 @@
 #include "Camera.h"
 #include "DebugMesh.h"
 #include "TileMesh.h"
+#include "TileTemplate.h"
 
 #define DEFAULT_WINDOW_WIDTH 500
 #define DEFAULT_WINDOW_HEIGHT 500
 
-static void handleGLDebugMessage(
+void handleGLDebugMessage(
 	GLenum source,
 	GLenum type,
 	GLuint id,
@@ -22,52 +23,7 @@ static void handleGLDebugMessage(
 	GLsizei length,
 	GLchar const* message,
 	void const* user_param
-)
-{
-	const char* sourceString = [source]()
-	{
-		switch (source)
-		{
-		case GL_DEBUG_SOURCE_API: return "API";
-		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
-		case GL_DEBUG_SOURCE_SHADER_COMPILER: return "SHADER COMPILER";
-		case GL_DEBUG_SOURCE_THIRD_PARTY: return "THIRD PARTY";
-		case GL_DEBUG_SOURCE_APPLICATION: return "APPLICATION";
-		case GL_DEBUG_SOURCE_OTHER: return "OTHER";
-		}
-		return "";
-	}();
-
-	const char* typeString = [type]()
-	{
-		switch (type)
-		{
-		case GL_DEBUG_TYPE_ERROR: return "ERROR";
-		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
-		case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "UNDEFINED_BEHAVIOR";
-		case GL_DEBUG_TYPE_PORTABILITY: return "PORTABILITY";
-		case GL_DEBUG_TYPE_PERFORMANCE: return "PERFORMANCE";
-		case GL_DEBUG_TYPE_MARKER: return "MARKER";
-		case GL_DEBUG_TYPE_OTHER: return "OTHER";
-		}
-		return "";
-	}();
-
-	const char* severityString = [severity]()
-	{
-		switch (severity) {
-		case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION";
-		case GL_DEBUG_SEVERITY_LOW: return "LOW";
-		case GL_DEBUG_SEVERITY_MEDIUM: return "MEDIUM";
-		case GL_DEBUG_SEVERITY_HIGH: return "HIGH";
-		}
-		return "";
-	}();
-
-	std::cerr << sourceString << ", " << typeString << ", " << severityString << ", " << id << ": " << message << std::endl << std::endl;
-
-	assert(type != GL_DEBUG_TYPE_ERROR);
-}
+);
 
 int main(int argc, char* argv[])
 {
@@ -104,11 +60,39 @@ int main(int argc, char* argv[])
 
 	glClearColor(0.5f, 0.3f, 0.2f, 1.f);
 
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	glEnable(GL_DEPTH_TEST);
 
 	// tiles
+	static float probabilities[] = {
+		1000.f,
+		10.f,
+		10.f,
+		10.f,
+		10.f,
+		10.f,
+		1.f,
+		1.f,
+		1.f,
+		70.f,
+		70.f,
+		70.f,
+		70.f
+	};
+	TileTemplate tileTemplate(
+		"data/grass.png",
+		probabilities, sizeof(probabilities) / sizeof(float),
+		0.15f,
+		4
+	);
+
 	TileMesh tileMesh;
-	constexpr int mapHalfSize = 200;
+
+	int tileTemplateIndex = tileMesh.addTileTemplate(tileTemplate);
+
+	constexpr int mapHalfSize = 0;
 	for (int x = -mapHalfSize; x <= mapHalfSize; ++x)
 	{
 		const float fx = static_cast<float>(x);
@@ -116,7 +100,7 @@ int main(int argc, char* argv[])
 		{
 			const float fy = static_cast<float>(y);
 			const float z = std::cos(std::sqrt(fx * fx + fy * fy) * 0.5f) * 0.3f - std::min(std::max(std::abs(fx), std::abs(fy)), 10.f) * 0.8f;
-			tileMesh.addTile(glm::vec3(x, y, z));
+			tileMesh.addTile(glm::vec3(x, y, z), tileTemplateIndex);
 		}
 	}
 	tileMesh.upload();
@@ -271,4 +255,59 @@ int main(int argc, char* argv[])
     SDL_Quit();
 
     return 0;
+}
+
+void handleGLDebugMessage(
+	GLenum source,
+	GLenum type,
+	GLuint id,
+	GLenum severity,
+	GLsizei length,
+	GLchar const* message,
+	void const* user_param
+)
+{
+	const char* sourceString = [source]()
+	{
+		switch (source)
+		{
+		case GL_DEBUG_SOURCE_API: return "API";
+		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
+		case GL_DEBUG_SOURCE_SHADER_COMPILER: return "SHADER COMPILER";
+		case GL_DEBUG_SOURCE_THIRD_PARTY: return "THIRD PARTY";
+		case GL_DEBUG_SOURCE_APPLICATION: return "APPLICATION";
+		case GL_DEBUG_SOURCE_OTHER: return "OTHER";
+		}
+		return "";
+	}();
+
+	const char* typeString = [type]()
+	{
+		switch (type)
+		{
+		case GL_DEBUG_TYPE_ERROR: return "ERROR";
+		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
+		case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "UNDEFINED_BEHAVIOR";
+		case GL_DEBUG_TYPE_PORTABILITY: return "PORTABILITY";
+		case GL_DEBUG_TYPE_PERFORMANCE: return "PERFORMANCE";
+		case GL_DEBUG_TYPE_MARKER: return "MARKER";
+		case GL_DEBUG_TYPE_OTHER: return "OTHER";
+		}
+		return "";
+	}();
+
+	const char* severityString = [severity]()
+	{
+		switch (severity) {
+		case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION";
+		case GL_DEBUG_SEVERITY_LOW: return "LOW";
+		case GL_DEBUG_SEVERITY_MEDIUM: return "MEDIUM";
+		case GL_DEBUG_SEVERITY_HIGH: return "HIGH";
+		}
+		return "";
+	}();
+
+	std::cerr << sourceString << ", " << typeString << ", " << severityString << ", " << id << ": " << message << std::endl << std::endl;
+
+	assert(type != GL_DEBUG_TYPE_ERROR);
 }
