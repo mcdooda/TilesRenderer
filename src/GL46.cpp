@@ -7,6 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 
+#include "Camera.h"
 #include "Program.h"
 #include "Renderer.h"
 
@@ -103,8 +104,7 @@ int main(int argc, char* argv[])
 
 	glClearColor(0.5f, 0.3f, 0.2f, 1.f);
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_DEPTH_TEST);
 
 	TileMesh tileMesh;
 	constexpr int mapHalfSize = 200;
@@ -114,23 +114,13 @@ int main(int argc, char* argv[])
 		for (int y = -mapHalfSize; y <= mapHalfSize; ++y)
 		{
 			const float fy = static_cast<float>(y);
-			tileMesh.addTile(glm::vec3(x, y, std::cos(std::sqrt(x * x + y * y) * 0.5f)));
+			const float z = std::cos(std::sqrt(fx * fx + fy * fy) * 0.5f) * 0.3f - std::min(std::max(std::abs(fx), std::abs(fy)), 10.f) * 0.8f;
+			tileMesh.addTile(glm::vec3(x, y, z));
 		}
 	}
 	tileMesh.upload();
 
-	const float tileSize = 32.f;
-	const glm::vec3 axes[] = {
-		glm::vec3(-tileSize, -0.5f * tileSize, 0.f /*-1.f * t*/),
-		glm::vec3(tileSize, -0.5f * tileSize, 0.f /*-1.f * t*/),
-		glm::vec3(0.f, tileSize, 0.f)
-	};
-	glm::mat4 view = glm::mat4(
-		glm::vec4(axes[0], 0.f),
-		glm::vec4(axes[1], 0.f),
-		glm::vec4(axes[2], 0.f),
-		glm::vec4(glm::vec3(0.f, 0.f, 0.f), 1.f)
-	);
+	Camera camera;
 
 	float dt = 0.01f;
 
@@ -162,7 +152,7 @@ int main(int argc, char* argv[])
 			{
 				const float wheelY = static_cast<float>(event.wheel.y);
 				const float zoom = 1.f + wheelY * 0.1f;
-				view = glm::scale(view, glm::vec3(zoom, zoom, zoom));
+				camera.zoom(zoom);
 			}
 				break;
 			case SDL_WINDOWEVENT:
@@ -187,25 +177,25 @@ int main(int argc, char* argv[])
 			{
 				if (up)
 				{
-					move.y = -1.f;
+					move.y = 1.f;
 				}
 				else if (down)
 				{
-					move.y = 1.f;
+					move.y = -1.f;
 				}
 			}
 			if (!(left && right))
 			{
 				if (left)
 				{
-					move.x = 1.f;
+					move.x = -1.f;
 				}
 				else if (right)
 				{
-					move.x = -1.f;
+					move.x = 1.f;
 				}
 			}
-			view = glm::translate(view, move * dt * 100.f);
+			camera.move(move * dt * 500.f);
 
 			const bool rotateLeft = keyboardState[SDL_SCANCODE_J];
 			const bool rotateRight = keyboardState[SDL_SCANCODE_K];
@@ -221,15 +211,16 @@ int main(int argc, char* argv[])
 					rotation = 1.f;
 				}
 			}
-			view = glm::rotate(view, rotation * dt, glm::vec3(0.f, 0.f, 1.f));
+			camera.rotate(rotation * dt);
 		}
-
-		glClear(GL_COLOR_BUFFER_BIT);
 
 		glViewport(0, 0, windowWidth, windowHeight);
 
+		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_DEPTH_BUFFER_BIT);
+
 		PerFrameData perFrameData;
-		perFrameData.view = view;
+		perFrameData.view = camera.getViewMatrix();
 		perFrameData.projection = glm::ortho(
 			static_cast<float>(windowWidth) * -0.5f, static_cast<float>(windowWidth) * 0.5f,
 			static_cast<float>(windowHeight) * -0.5f, static_cast<float>(windowHeight) * 0.5f
@@ -250,6 +241,12 @@ int main(int argc, char* argv[])
 		tileMesh.draw();
 
 		glUseProgram(0);
+
+		glBegin(GL_LINES);
+			glColor3ub(255, 0, 0);
+			glm::vec3 a = glm::vec3(perFrameData.projection * perFrameData.view * glm::vec4(camera.getCenter(), 0.f));
+			glVertex3f();
+		glEnd();
 
         SDL_GL_SwapWindow(window);
 
