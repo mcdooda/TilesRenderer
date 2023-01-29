@@ -8,8 +8,8 @@
 #include <glm/gtx/rotate_vector.hpp>
 
 #include "Camera.h"
-#include "Program.h"
-#include "Renderer.h"
+#include "DebugMesh.h"
+#include "TileMesh.h"
 
 #define DEFAULT_WINDOW_WIDTH 500
 #define DEFAULT_WINDOW_HEIGHT 500
@@ -106,6 +106,7 @@ int main(int argc, char* argv[])
 
 	glEnable(GL_DEPTH_TEST);
 
+	// tiles
 	TileMesh tileMesh;
 	constexpr int mapHalfSize = 200;
 	for (int x = -mapHalfSize; x <= mapHalfSize; ++x)
@@ -120,12 +121,12 @@ int main(int argc, char* argv[])
 	}
 	tileMesh.upload();
 
+	// debug
+	DebugMesh debugMesh;
+
 	Camera camera;
 
 	float dt = 0.01f;
-
-	GLProgram program;
-	program.load("shaders/tile.frag", "shaders/tile.vert");
 
     SDL_Event event;
     bool loop = true;
@@ -219,34 +220,40 @@ int main(int argc, char* argv[])
 		glClear(GL_COLOR_BUFFER_BIT);
 		glClear(GL_DEPTH_BUFFER_BIT);
 
-		PerFrameData perFrameData;
-		perFrameData.view = camera.getViewMatrix();
-		perFrameData.projection = glm::ortho(
+		glm::mat4 view = camera.getViewMatrix();
+		glm::mat4 projection = glm::ortho(
 			static_cast<float>(windowWidth) * -0.5f, static_cast<float>(windowWidth) * 0.5f,
 			static_cast<float>(windowHeight) * -0.5f, static_cast<float>(windowHeight) * 0.5f
 		);
 
-		perFrameData.grassColor = glm::vec4(0.53f, 0.8f, 0.31f, 1.f);
-		perFrameData.dirtColor = glm::vec4(0.51f, 0.43f, 0.3f, 1.f);
+		{
+			TileMesh::PerFrameData perFrameData;
+			perFrameData.view = view;
+			perFrameData.projection = projection;
+			perFrameData.grassColor = glm::vec4(0.53f, 0.8f, 0.31f, 1.f);
+			perFrameData.dirtColor = glm::vec4(0.51f, 0.43f, 0.3f, 1.f);
 
-		const glm::vec3 initialLightDirection = glm::normalize(glm::vec3(-1.f, -1.f, -1.f));
-		const glm::vec3 lightDirection = glm::rotateZ(initialLightDirection, t1);
-		//const glm::vec3 lightDirection = initialLightDirection;
+			const glm::vec3 initialLightDirection = glm::normalize(glm::vec3(-1.f, -1.f, -1.f));
+			const glm::vec3 lightDirection = glm::rotateZ(initialLightDirection, t1);
 
-		perFrameData.lightDirection = glm::vec4(lightDirection, 1.f);
-		tileMesh.setPerFrameData(perFrameData);
+			perFrameData.lightDirection = glm::vec4(lightDirection, 1.f);
+			tileMesh.setPerFrameData(perFrameData);
 
-		program.use();
+			tileMesh.draw();
+		}
 
-		tileMesh.draw();
+		{
+			DebugMesh::PerFrameData perFrameData;
+			perFrameData.view = view;
+			perFrameData.projection = projection;
+			debugMesh.setPerFrameData(perFrameData);
+
+			debugMesh.addAxes(camera.getCenter());
+
+			debugMesh.draw();
+		}
 
 		glUseProgram(0);
-
-		glBegin(GL_LINES);
-			glColor3ub(255, 0, 0);
-			glm::vec3 a = glm::vec3(perFrameData.projection * perFrameData.view * glm::vec4(camera.getCenter(), 0.f));
-			glVertex3f();
-		glEnd();
 
         SDL_GL_SwapWindow(window);
 
@@ -254,9 +261,9 @@ int main(int argc, char* argv[])
 		dt = t2 - t1;
 		const float fps = 1.f / dt;
 
-		char title[20];
-		sprintf(title, "%.1f", fps);
-		SDL_SetWindowTitle(window, title);
+		std::stringstream title;
+		title << fps;
+		SDL_SetWindowTitle(window, title.str().c_str());
     }
 
 	SDL_DestroyWindow(window);

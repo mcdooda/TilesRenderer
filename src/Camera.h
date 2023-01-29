@@ -19,7 +19,7 @@ public:
 			glm::vec4(axes[0], 0.f),
 			glm::vec4(axes[1], 0.f),
 			glm::vec4(axes[2], 0.f),
-			glm::vec4(glm::vec3(0.f, 0.f, 0.f), 1.f)
+			glm::vec4(0.f, 0.f, 0.f, 1.f)
 		);
 	}
 
@@ -37,7 +37,9 @@ public:
 
 	void rotate(float angle)
 	{
+		m_view = glm::translate(m_view, m_center);
 		m_view = glm::rotate(m_view, angle, glm::vec3(0.f, 0.f, 1.f));
+		m_view = glm::translate(m_view, -m_center);
 	}
 
 	const glm::mat4& getViewMatrix() const { return m_view; }

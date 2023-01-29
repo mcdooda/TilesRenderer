@@ -7,15 +7,7 @@
 #include <glm/glm.hpp>
 
 #include "Buffer.h"
-
-struct PerFrameData
-{
-	glm::mat4 view;
-	glm::mat4 projection;
-	glm::vec4 grassColor;
-	glm::vec4 dirtColor;
-	glm::vec4 lightDirection;
-};
+#include "Program.h"
 
 /*
 /  0  \
@@ -62,6 +54,15 @@ class TileMesh
 public:
 	static constexpr int MaxTiles = 1024 * 1024;
 
+	struct PerFrameData
+	{
+		glm::mat4 view;
+		glm::mat4 projection;
+		glm::vec4 grassColor;
+		glm::vec4 dirtColor;
+		glm::vec4 lightDirection;
+	};
+
 	TileMesh()
 		: m_indicesBuffer(tileIndices, sizeof(tileIndices))
 		, m_verticesBuffer(tileVertices, sizeof(tileVertices))
@@ -77,6 +78,8 @@ public:
 		glEnableVertexArrayAttrib(m_vao, 1);
 		glVertexArrayAttribFormat(m_vao, 1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3));
 		glVertexArrayAttribBinding(m_vao, 1, 0);
+
+		m_tileProgram.load("shaders/tile.frag", "shaders/tile.vert");
 	}
 
 	~TileMesh()
@@ -111,10 +114,15 @@ public:
 
 	void draw()
 	{
+		m_tileProgram.use();
+
 		glBindVertexArray(m_vao);
 		m_perFrameDataBuffer.bind(GL_UNIFORM_BUFFER, PerFrameBufferIndex);
 		m_tilesBuffer.bind(GL_SHADER_STORAGE_BUFFER, TilesBufferIndex);
 		m_indirectCommandsBuffer.draw();
+		glBindVertexArray(0);
+
+		glUseProgram(0);
 	}
 
 protected:
@@ -131,4 +139,6 @@ protected:
 	GLArrayBuffer<glm::vec4, MaxTiles> m_tilesBuffer;
 
 	GLIndirectCommandsBuffer<MaxTiles> m_indirectCommandsBuffer;
+
+	GLProgram m_tileProgram;
 };
