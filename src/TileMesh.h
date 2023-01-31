@@ -6,6 +6,7 @@
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 
+#include "Axes.h"
 #include "BindlessTexture.h"
 #include "Buffer.h"
 #include "Program.h"
@@ -38,26 +39,6 @@ struct TileVertex
 	glm::vec2 uv;
 };
 
-const TileVertex tileVertices[] = {
-	// tile top with upwards normals
-	{ glm::vec3(-0.5f, -0.5f, 0.f),  glm::vec3(0.f, 0.f, 1.f), glm::vec2(0.5f, 0.f)   },
-	{ glm::vec3(0.5f,  -0.5f, 0.f),  glm::vec3(0.f, 0.f, 1.f), glm::vec2(0.f,  0.25f) },
-	{ glm::vec3(-0.5f,  0.5f, 0.f),  glm::vec3(0.f, 0.f, 1.f), glm::vec2(1.f,  0.25f) },
-	{ glm::vec3(0.5f,   0.5f, 0.f),  glm::vec3(0.f, 0.f, 1.f), glm::vec2(0.5f, 0.5f)  },
-
-	// tile left side with sideways normals
-	{ glm::vec3(0.5f,  -0.5f,  0.f), glm::vec3(1.f, 0.f, 0.f), glm::vec2(0.f,  0.25f) },
-	{ glm::vec3(0.5f,   0.5f,  0.f), glm::vec3(1.f, 0.f, 0.f), glm::vec2(0.5f, 0.5f)  },
-	{ glm::vec3(0.5f,  -0.5f, -1.f), glm::vec3(1.f, 0.f, 0.f), glm::vec2(0.f,  0.75f) },
-	{ glm::vec3(0.5f,   0.5f, -1.f), glm::vec3(1.f, 0.f, 0.f), glm::vec2(0.5f, 1.f)   },
-
-	// tile right side with sideways normals
-	{ glm::vec3(-0.5f,  0.5f,  0.f), glm::vec3(0.f, 1.f, 0.f), glm::vec2(1.f,  0.25f) },
-	{ glm::vec3(0.5f,   0.5f,  0.f), glm::vec3(0.f, 1.f, 0.f), glm::vec2(0.5f, 0.5f)  },
-	{ glm::vec3(-0.5f,  0.5f, -1.f), glm::vec3(0.f, 1.f, 0.f), glm::vec2(1.f,  0.75f) },
-	{ glm::vec3(0.5f,   0.5f, -1.f), glm::vec3(0.f, 1.f, 0.f), glm::vec2(0.5f, 1.f)   },
-};
-
 struct alignas(16) TileData
 {
 	glm::vec4 position;
@@ -80,10 +61,54 @@ public:
 		glm::vec4 lightDirection;
 	};
 
-	TileMesh()
+	TileMesh(const TileTemplate& tileTemplate)
 		: m_indicesBuffer(tileIndices, sizeof(tileIndices))
-		, m_verticesBuffer(tileVertices, sizeof(tileVertices))
 	{
+		const glm::ivec2& spriteSize = tileTemplate.getTexture().getSize();
+		const float spriteWidth = static_cast<float>(spriteSize.x);
+		const float spriteHeight = static_cast<float>(spriteSize.y);
+		const float spriteTileHeight = spriteHeight / tileTemplate.getNumVariants();
+		const float spriteTileWidth = spriteWidth / tileTemplate.getNumAnimationFrames();
+
+		const float localMinU = 0.f;
+		const float localMaxU = 1.f / tileTemplate.getNumAnimationFrames();
+		const float localMinV = 0.f;
+		const float localMaxV = 1.f / static_cast<float>(tileTemplate.getNumVariants());
+
+		const float tileHeight3d = (spriteTileHeight + axes[0].y + axes[1].y) / axes[2].y;
+		assert(tileHeight3d >= 0.f);
+		const float bottomZ = -tileHeight3d;
+
+		const glm::vec2 uv0(localMinU - axes[0].x / spriteWidth, localMinV);
+		const glm::vec2 uv1(localMinU, localMinV - axes[0].y / spriteHeight);
+		const glm::vec2 uv2(localMaxU, localMinV - axes[1].y / spriteHeight);
+		const glm::vec2 uv3(localMinU - axes[0].x / spriteWidth, localMinV + (-axes[0].y - axes[1].y) / spriteHeight);
+		const glm::vec2 uv4(uv1.x, localMaxV + axes[1].y / spriteHeight);
+		const glm::vec2 uv5(uv2.x, localMaxV + axes[0].y / spriteHeight);
+		const glm::vec2 uv6(uv3.x, localMaxV);
+
+		const TileVertex tileVertices[] = {
+			// tile top with upwards normals
+			{ glm::vec3(-0.5f, -0.5f,    0.f),  glm::vec3(0.f, 0.f, 1.f), uv0 },
+			{ glm::vec3(0.5f,  -0.5f,    0.f),  glm::vec3(0.f, 0.f, 1.f), uv1 },
+			{ glm::vec3(-0.5f,  0.5f,    0.f),  glm::vec3(0.f, 0.f, 1.f), uv2 },
+			{ glm::vec3(0.5f,   0.5f,    0.f),  glm::vec3(0.f, 0.f, 1.f), uv3 },
+
+			// tile left side with sideways normals
+			{ glm::vec3(0.5f,  -0.5f,     0.f), glm::vec3(1.f, 0.f, 0.f), uv1 },
+			{ glm::vec3(0.5f,   0.5f,     0.f), glm::vec3(1.f, 0.f, 0.f), uv3 },
+			{ glm::vec3(0.5f,  -0.5f, bottomZ), glm::vec3(1.f, 0.f, 0.f), uv4 },
+			{ glm::vec3(0.5f,   0.5f, bottomZ), glm::vec3(1.f, 0.f, 0.f), uv6 },
+
+			// tile right side with sideways normals
+			{ glm::vec3(-0.5f,  0.5f,     0.f), glm::vec3(0.f, 1.f, 0.f), uv2 },
+			{ glm::vec3(0.5f,   0.5f,     0.f), glm::vec3(0.f, 1.f, 0.f), uv3 },
+			{ glm::vec3(-0.5f,  0.5f, bottomZ), glm::vec3(0.f, 1.f, 0.f), uv5 },
+			{ glm::vec3(0.5f,   0.5f, bottomZ), glm::vec3(0.f, 1.f, 0.f), uv6 },
+		};
+
+		m_verticesBuffer.update(tileVertices, sizeof(tileVertices));
+
 		glCreateVertexArrays(1, &m_vao);
 		glVertexArrayElementBuffer(m_vao, m_indicesBuffer.getHandle());
 		glVertexArrayVertexBuffer(m_vao, 0, m_verticesBuffer.getHandle(), 0, sizeof(TileVertex));

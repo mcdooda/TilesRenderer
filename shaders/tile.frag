@@ -63,23 +63,17 @@ void main()
 	TileTemplateData tileTemplateData = in_tileTemplates[tileData.tileTemplateIndex];
 
 	// pick grass or dirt color based on normal
-	vec4 textureColor = in_Normal.z > 0.5 ? grassColor : dirtColor;
+	//vec4 textureColor = in_Normal.z > 0.5 ? grassColor : dirtColor;
 
-	//textureColor = vec4(in_Uv, 0.0, 1.0);
+	vec4 textureColor = vec4(in_Uv, 0.0, 1.0);
 	textureColor = texture( sampler2D(unpackUint2x32(tileTemplateData.albedoTexture)), in_Uv);
-	out_FragColor = textureColor;
-
-	/*
-
-	//vec4 textureColor = texture( sampler2D(unpackUint2x32(tileTemplateData.albedoTexture)), in_Uv);
 
 	// add some randomness to the input color
-	vec4 color = vec4(textureColor.rgb + (random(gl_FragCoord.xy) * 0.1 - 0.05), textureColor.a);
+	//vec4 color = vec4(textureColor.rgb + (random(gl_FragCoord.xy) * 0.1 - 0.05), textureColor.a);
+	vec4 color = textureColor;
 
 	// apply shadow
 	float dotNormalLightDirection = dot(in_Normal, lightDirection.xyz);
 	float shadowFactor = remap(clamp(-dotNormalLightDirection, 0.0, 1.0), 0.0, 1.0, 0.7, 1.0);
 	out_FragColor = vec4(color.rgb * shadowFactor, color.a);
-
-	*/
 };

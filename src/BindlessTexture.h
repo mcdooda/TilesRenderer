@@ -9,11 +9,18 @@ class BindlessTexture
 {
 public:
 	BindlessTexture() = delete;
+	BindlessTexture(const BindlessTexture&) = delete;
+	BindlessTexture(BindlessTexture&&) = delete;
+	void operator=(const BindlessTexture&) = delete;
+	void operator=(BindlessTexture&&) = delete;
 
 	BindlessTexture(const std::string& filePath)
 	{
 		SDL_Surface* surface = IMG_Load(filePath.c_str());
 		assert(surface != nullptr);
+
+		m_size.x = surface->w;
+		m_size.y = surface->h;
 
 		glCreateTextures(GL_TEXTURE_2D, 1, &m_handle);
 		glTextureParameteri(m_handle, GL_TEXTURE_MAX_LEVEL, 0);
@@ -37,8 +44,10 @@ public:
 	}
 
 	GLuint64 getHandleBindless() const { return m_handleBindless; }
+	const glm::ivec2& getSize() const { return m_size; }
 
 protected:
 	GLuint m_handle;
 	GLuint64 m_handleBindless;
+	glm::ivec2 m_size;
 };

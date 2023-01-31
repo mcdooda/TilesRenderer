@@ -52,6 +52,6 @@ void main()
 	mat4 mvp = projection * view;
 	gl_Position = mvp * vec4(in_Vertex + tileData.position.xyz, 1.0);
 	out_Normal = in_Normal;
-	out_Uv = vec2(in_Uv.x / tileTemplateData.numAnimationFrames, in_Uv.y / tileTemplateData.numVariants);
+	out_Uv = vec2(in_Uv.x, in_Uv.y + float(tileData.tileVariantIndex) / tileTemplateData.numVariants);
 	out_BaseInstance = gl_BaseInstance;
 }

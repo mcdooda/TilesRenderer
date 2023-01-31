@@ -27,6 +27,8 @@ void handleGLDebugMessage(
 
 int main(int argc, char* argv[])
 {
+	srand(time(nullptr));
+
     SDL_Init(SDL_INIT_VIDEO);
 
 	int windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
@@ -88,11 +90,11 @@ int main(int argc, char* argv[])
 		4
 	);
 
-	TileMesh tileMesh;
+	TileMesh tileMesh(tileTemplate);
 
 	int tileTemplateIndex = tileMesh.addTileTemplate(tileTemplate);
 
-	constexpr int mapHalfSize = 0;
+	constexpr int mapHalfSize = 200;
 	for (int x = -mapHalfSize; x <= mapHalfSize; ++x)
 	{
 		const float fx = static_cast<float>(x);
