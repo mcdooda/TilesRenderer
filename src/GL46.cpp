@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
 		for (int y = -mapHalfSize; y <= mapHalfSize; ++y)
 		{
 			const float fy = static_cast<float>(y);
-			const float z = std::cos(std::sqrt(fx * fx + fy * fy) * 0.5f) * 0.3f - std::min(std::max(std::abs(fx), std::abs(fy)), 10.f) * 0.8f;
+			const float z = std::cos(std::sqrt(fx * fx + fy * fy) * 0.5f) * 0.8f - std::min(std::max(std::abs(fx), std::abs(fy)), 10.f) * 0.8f;
 			tileMesh.addTile(glm::vec3(x, y, z), tileTemplateIndex);
 		}
 	}
@@ -212,15 +212,15 @@ int main(int argc, char* argv[])
 			static_cast<float>(windowHeight) * -0.5f, static_cast<float>(windowHeight) * 0.5f
 		);
 
+		const glm::vec3 initialLightDirection = glm::normalize(glm::vec3(-1.f, -1.f, -1.f));
+		const glm::vec3 lightDirection = glm::rotateZ(initialLightDirection, t1);
+
 		{
 			TileMesh::PerFrameData perFrameData;
 			perFrameData.view = view;
 			perFrameData.projection = projection;
 			perFrameData.grassColor = glm::vec4(0.53f, 0.8f, 0.31f, 1.f);
 			perFrameData.dirtColor = glm::vec4(0.51f, 0.43f, 0.3f, 1.f);
-
-			const glm::vec3 initialLightDirection = glm::normalize(glm::vec3(-1.f, -1.f, -1.f));
-			const glm::vec3 lightDirection = glm::rotateZ(initialLightDirection, t1);
 
 			perFrameData.lightDirection = glm::vec4(lightDirection, 1.f);
 			tileMesh.setPerFrameData(perFrameData);
@@ -235,6 +235,12 @@ int main(int argc, char* argv[])
 			debugMesh.setPerFrameData(perFrameData);
 
 			debugMesh.addAxes(camera.getCenter());
+
+			debugMesh.addLine(
+				camera.getCenter(),
+				camera.getCenter() + lightDirection,
+				glm::vec3(1.f, 1.f, 0.f)
+			);
 
 			debugMesh.draw();
 		}
